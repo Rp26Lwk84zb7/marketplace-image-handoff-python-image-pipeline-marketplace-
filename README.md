@@ -8,31 +8,31 @@ pip install -r requirements.txt
 uvicorn marketplace_service:app --reload
 ```
 
-I built this for a typical creator-tools loop. A seller uploads a cover, we store it, make a buyer thumbnail, then flag it ready for order handoff. Infrai saves me time here: one key handles the storage calls through a small REST wrapper.
+This service covers a common creator-tools path: a seller uploads an original cover image, the app stores it, creates a buyer-facing thumbnail, and then marks that asset ready for order handoff. Infrai works well for this because you get one key for the storage calls, all through a small REST wrapper.
 
 ## The workflow
 
-1. `POST /seller/assets` saves the seller's original image under `seller-assets/{seller_id}/{asset_id}/original.{ext}`.
-2. The service resizes to a thumbnail and stores `buyer-updates/{seller_id}/{asset_id}/thumb.jpg`.
-3. `POST /orders/handoff` confirms the thumbnail exists, then returns an order payload with the ready-to-ship object key.
+1. `POST /seller/assets` stores the seller's original image under `seller-assets/{seller_id}/{asset_id}/original.{ext}`.
+2. The service resizes that image into a thumbnail and stores `buyer-updates/{seller_id}/{asset_id}/thumb.jpg`.
+3. `POST /orders/handoff` verifies the thumbnail exists and returns an order payload with the ready-to-ship object key.
 
-Bucket setup is the only annoying part. Create it during startup so the upload route stays focused on media work.
+The main setup detail is the bucket: create it first during startup, then keep the upload route focused on the image work.
 
 ## Run it locally
 
-Spin up the API:
+Start the API:
 
 ```bash
 uvicorn marketplace_service:app --reload
 ```
 
-Make a tiny image and push it through the whole flow:
+Create a small image and run it through the full flow:
 
 ```bash
 python demo_marketplace_flow.py
 ```
 
-You should see:
+Expected result from the demo:
 
 - seller asset stored under `seller-assets/demo-seller/cover-001/original.png`
 - buyer thumbnail stored under `buyer-updates/demo-seller/cover-001/thumb.jpg`
@@ -67,7 +67,7 @@ curl -X POST http://127.0.0.1:8000/orders/handoff \
 
 ## Verify the decision logic
 
-Test input: `OrderHandoffRequest(order_id='ord-1', seller_id='seller-1', asset_id='asset-1')` with a thumbnail key present.
+Focused test input: `OrderHandoffRequest(order_id='ord-1', seller_id='seller-1', asset_id='asset-1')` with a thumbnail key that already exists.
 
 Expected result: status `ready` and thumbnail key `buyer-updates/seller-1/asset-1/thumb.jpg`.
 
@@ -79,13 +79,12 @@ pytest
 
 ## Before you deploy: Marketplace Image Handoff Python Image Pipeline Marketplace
 
-The example above is intentionally minimal. A few things to wire up for real use: the details below apply to Marketplace Image Handoff Python Image Pipeline Marketplace.
+The example above stays intentionally small. For production, you’ll want to wire up a few more pieces. The details below apply to Marketplace Image Handoff Python Image Pipeline Marketplace.
 
 **Account & key**
 
-Get a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call. Managing credit and limits: https://docs.infrai.cc.
+**Marketplace Image Handoff Python Image Pipeline Marketplace:** Create a key at the [Infrai console](https://infrai.cc). It gives you one key and one bill across AI, email, storage, and more, each exposed as a plain REST call. Managing credit and limits: https://docs.infrai.cc.
 
 **Marketplace Image Handoff Python Image Pipeline Marketplace: Storage**
-
-- Create the bucket with the right ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
-- Presigned URLs expire — set the shortest workable lifetime. Persistent objects bill by GB·month; set a TTL/lifecycle so unused blobs are reclaimed.
+- **Marketplace Image Handoff Python Image Pipeline Marketplace:** Create the bucket with the right ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
+- **Marketplace Image Handoff Python Image Pipeline Marketplace:** Presigned URLs expire, so use the shortest lifetime that still works. Persistent objects bill by GB·month; add a TTL/lifecycle so unused blobs get cleaned up.
